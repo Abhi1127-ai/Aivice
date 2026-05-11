@@ -1,0 +1,12 @@
+package com.aivice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class AiviceBackendApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(AiviceBackendApplication.class, args);
+    }
+}
