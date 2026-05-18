@@ -1,14 +1,13 @@
 package com.aivice.security;
 
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Date;
+import java.time.Instant;
+import java.util.Base64;
 
 @Component
 public class JwtUtil {
@@ -17,35 +16,48 @@ public class JwtUtil {
     private String secret;
 
     @Value("${jwt.expiration}")
-    private String expiration;
+    private long expiration;
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+    private NimbusJwtEncoder encoder() {
+        byte[] keyBytes = Base64.getEncoder().encode(secret.getBytes());
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        com.nimbusds.jose.jwk.OctetSequenceKey jwk =
+                new com.nimbusds.jose.jwk.OctetSequenceKey.Builder(key).build();
+        return new NimbusJwtEncoder(
+                new com.nimbusds.jose.jwk.source.ImmutableJWKSet<>(
+                        new com.nimbusds.jose.jwk.JWKSet(jwk)));
     }
 
-    public String generateToken(String email){
-        return Jwts.builder()
+    private NimbusJwtDecoder decoder() {
+        byte[] keyBytes = Base64.getEncoder().encode(secret.getBytes());
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "HmacSHA256");
+        return NimbusJwtDecoder.withSecretKey(key).build();
+    }
+
+    public String generateToken(String email) {
+        JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(email)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey())
-                .compact();
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusMillis(expiration))
+                .build();
+
+        JwtEncoderParameters params = JwtEncoderParameters.from(
+                JwsHeader.with(MacAlgorithm.HS256).build(),
+                claims
+        );
+
+        return encoder().encode(params).getTokenValue();
     }
 
-    public String extractEmail(String token){
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+    public String extractEmail(String token) {
+        return decoder().decode(token).getSubject();
     }
 
-    public boolean isTokenvalid(String token){
-        try{
+    public boolean isTokenValid(String token) {
+        try {
             extractEmail(token);
             return true;
-        }catch(JwtException | IllegalArgumentException e){
+        } catch (Exception e) {
             return false;
         }
     }

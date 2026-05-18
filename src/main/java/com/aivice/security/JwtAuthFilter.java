@@ -18,8 +18,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private JwtUtil jwtUtil;
-    private UserDetailsService userDetailsService;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
 
 
     @Override
@@ -37,7 +37,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        if(jwtUtil.isTokenvalid(token)){
+        if(jwtUtil.isTokenValid(token)){
             String email = jwtUtil.extractEmail(token);
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
