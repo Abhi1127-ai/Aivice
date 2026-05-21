@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,12 +41,12 @@ public class InvoiceService {
                 .collect(Collectors.toList());
     }
 
-    public InvoiceResponseDTO getInvoiceById(String id, String username) {
+    public InvoiceResponseDTO getInvoiceById(String id, String userId) {
         Invoice invoice = findOwned(id,userId);
         return toResponse(invoice , resolveClientName(invoice.getClientId()));
     }
 
-    public InvoiceResponseDTO createInvoice(@Valid InvoiceRequestDTO dto, String username) {
+    public InvoiceResponseDTO createInvoice(@Valid InvoiceRequestDTO dto, String userId) {
         clientRepository.findByIdAndUserId(dto.getClientId(),userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client Not Found:" + dto.getClientId()));
 
@@ -89,18 +91,104 @@ public class InvoiceService {
         return toResponse(invoiceRepository.save(invoice),resolveClientName(dto.getClientId());
     }
 
-    public InvoiceResponseDTO updateInvoice(String id, @Valid InvoiceRequestDTO dto, String username) {
-        return null;
+    public InvoiceResponseDTO updateInvoice(String id, @Valid InvoiceRequestDTO dto, String userId) {
+        Invoice invoice = findOwner(id,userId);
+
+        if(!invoice.getStatus().equals((InvoiceStatus.DRAFT.name())){
+            throw new IllegalStateException("Cannot update invoice with status: "+invoice.getStatus());
+        }
+
+        List<Invoice.LineItem> lineItems = buildLineItems(dto.getLineItems());
+        BigDecimal subtotal = calculateSubtotal(lineItems);
+        BigDecimal discountAmount = subtotal.multiply(dto.getDiscountPercent())
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal afterDiscount = subtotal.subtract(discountAmount);
+        BigDecimal taxAmount = afterDiscount.multiply(dto.getTaxPercent())
+                .divide(BigDecimal.valueOf(100),2,RoundingMode.HALF_UP);
+        BigDecimal totalAmount = afterDiscount.add(taxAmount);
+
+        invoice.setClientId(dto.getClientId());
+        invoice.setLineItems(lineItems);
+        invoice.setSubtotal(subtotal);
+        invoice.setDiscountPercent(dto.getDiscountPercent());
+        invoice.setDiscountAmount(discountAmount);
+        invoice.setTaxPercent(dto.getTaxPercent());
+        invoice.setTaxAmount(taxAmount);
+        invoice.setTotalAmount(totalAmount);
+        invoice.setCurrency(dto.getCurrency());
+        invoice.setNotes(dto.getNotes());
+        invoice.setTerms(dto.getTerms());
+        invoice.setIssuedDate(dto.getIssueDate());
+        invoice.setDueDate(dto.getDueDate());
+        invoice.setRecurring(dto.isRecurring());
+        invoice.setRecurringCycle(dto.getRecurringCycle());
+
+        return toResponse(invoiceRepository.save(invoice) , resolveClientname(invoice.getClientId());
     }
 
-    public InvoiceService updateStatus(String id, String username, String newStatus) {
-        return null;
+    public InvoiceService updateStatus(String id, String userId, String newStatus) {
+        Invoice invoice = findOwned(id,userId);
+        InvoiceStatus status = InvoiceStatus.valueOf(newStatus.toUpperCase());
+
+        invoice.setStatus(status.name());
+
+        switch(status){
+            case SENT -> invoice.setSentAt(LocalDateTime.now());
+            case VIEWED -> invoice.setViewedAt(LocalDateTime.now());
+            case PAID -> invoice.setPaidAt(LocalDateTime.now());
+
+            default -> { /* no timestamp needed */}
+        }
+        return toResponse(invoiceRepository.save(invoice) , resolveClientName(invoice.getClientId()));
     }
 
-    public InvoiceResponseDTO duplicateInvoice(String id, String username) {
-        return null;
+    public InvoiceResponseDTO duplicateInvoice(String id, String userId) {
+        Invoice original = findOwned(id,userId);
+
+        Invoice copy = Invoice.builder()
+                .userId(userId)
+                .clientId(original.getClientId())
+                .invoiceNumber(generateInvoiceNumber(userId))
+                .status(InvoiceStatus.DRAFT.name())
+                .lineItems(original.getLineItems())
+                .subtotal(original.getSubtotal())
+                .discountPercent(original.getDiscountPercent())
+                .discountAmount(original.getDiscountAmount())
+                .taxPercent(original.getTaxPercent())
+                .taxAmount(original.getTaxAmount())
+                .currency(original.getCurrency())
+                .notes(original.getNotes())
+                .terms(original.getTerms())
+                .issueDate(LocalDate.now())
+                .dueDate(LocalDate.now().plusDays(30))
+                .recurring(original.isRecurring())
+                .recurringCycle(original.getRecurringCycle())
+                .build();
+
+        return toResponse(invoiceRepository.save(copy),resolveClientName(copy.getClientId()));
     }
 
-    public void deleteInvoice(String id, String username) {
+    public void deleteInvoice(String id, String userId) {
+        Invoice invoice = findOwned(id,userId);
+        if(invoice.getStatus().equals(InvoiceStatus.PAID.name())){
+            throw new IllegalStateException("Cannot delete invoice with status: "+invoice.getStatus());
+        }
+        invoiceRepository.delete(invoice);
     }
+
+//    OverDue check scheduler ko call karne keliye
+
+    public List<Invoice> marOverdueInvoices(String userId){
+        List<Invoice> overdue = invoiceRepository.findOverdueInvoices(userId , LocalDate.now());
+        overdue.forEach(inv -> inv.setStatus(InvoiceStatus.OVERDUE.name()));
+
+        return invoiceRepository.saveAll(overdue);
+    }
+
+    private Invoice findOwned(String id, String userId) {
+        return invoiceRepository.findByIdAndUserId(id,userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: "+id));
+    }
+
+
 }

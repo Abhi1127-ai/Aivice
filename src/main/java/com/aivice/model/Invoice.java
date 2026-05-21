@@ -33,6 +33,7 @@ public class Invoice {
     private BigDecimal discountAmount;
     private BigDecimal taxPercent;
     private BigDecimal totalAmount;
+    private BigDecimal  TaxAmount;
 
     private String currency;
     private String notes;
@@ -53,6 +54,8 @@ public class Invoice {
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+
 
 //    Embedding Line Item
 
