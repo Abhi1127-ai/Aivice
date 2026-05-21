@@ -24,7 +24,7 @@ public class InvoiceResponseDTO {
     private BigDecimal discountAmount;
     private BigDecimal taxPercent;
     private BigDecimal taxAmount;
-    private String totalAmount;
+    private BigDecimal totalAmount;
 
     private String currency;
     private String notes;
