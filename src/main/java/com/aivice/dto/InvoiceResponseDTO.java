@@ -30,7 +30,7 @@ public class InvoiceResponseDTO {
     private String notes;
     private String terms;
 
-    private LocalDate issuedDate;
+    private LocalDate issueDate;
     private LocalDate dueDate;
 
     private boolean recurring;

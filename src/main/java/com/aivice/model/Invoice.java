@@ -4,17 +4,21 @@ import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+
 @Data
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
+@Document(collection = "invoices")
 public class Invoice {
 
     @Id
@@ -33,13 +37,13 @@ public class Invoice {
     private BigDecimal discountAmount;
     private BigDecimal taxPercent;
     private BigDecimal totalAmount;
-    private BigDecimal  TaxAmount;
+    private BigDecimal  taxAmount;
 
     private String currency;
     private String notes;
     private String terms;
 
-    private LocalDate issuedDate;
+    private LocalDate issueDate;
     private LocalDate dueDate;
 
     private boolean recurring;

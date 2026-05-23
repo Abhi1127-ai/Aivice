@@ -62,7 +62,7 @@ public class InvoiceController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<InvoiceService> updateStatus(
+    public ResponseEntity<InvoiceResponseDTO> updateStatus(
             @PathVariable String id,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal UserDetails userDetails

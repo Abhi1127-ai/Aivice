@@ -120,7 +120,7 @@ public class InvoiceService {
         invoice.setCurrency(dto.getCurrency());
         invoice.setNotes(dto.getNotes());
         invoice.setTerms(dto.getTerms());
-        invoice.setIssuedDate(dto.getIssueDate());
+        invoice.setIssueDate(dto.getIssueDate());
         invoice.setDueDate(dto.getDueDate());
         invoice.setRecurring(dto.isRecurring());
         invoice.setRecurringCycle(dto.getRecurringCycle());
@@ -133,8 +133,6 @@ public class InvoiceService {
         InvoiceStatus status = InvoiceStatus.valueOf(newStatus.toUpperCase());
 
         invoice.setStatus(status.name());
-
-        // Set timestamps on key transitions
         switch (status) {
             case SENT -> invoice.setSentAt(LocalDateTime.now());
             case VIEWED -> invoice.setViewedAt(LocalDateTime.now());
@@ -253,7 +251,7 @@ public class InvoiceService {
                 .currency(inv.getCurrency())
                 .notes(inv.getNotes())
                 .terms(inv.getTerms())
-                .issuedDate(inv.getIssuedDate())
+                .issueDate(inv.getIssueDate())
                 .dueDate(inv.getDueDate())
                 .recurring(inv.isRecurring())
                 .recurringCycle(inv.getRecurringCycle())
