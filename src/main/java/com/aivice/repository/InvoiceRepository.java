@@ -1,29 +1,33 @@
 package com.aivice.repository;
 
 import com.aivice.model.Invoice;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.stereotype.Repository;
+
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
-public interface InvoiceRepository {
-
-    Collection<Invoice> findByUserIdAndClientId(String userId, String clientId);
-
-    List<Invoice> findByUserIdAndStatus(String userId, String upperCase);
+@Repository
+public interface InvoiceRepository extends MongoRepository<Invoice, String> {
 
     List<Invoice> findByUserId(String userId);
 
-    long countByUserIdAndInvoiceNumberRegex(String userId, String pattern);
+    Optional<Invoice> findByIdAndUserId(String id, String userId);
 
-    List<Invoice> findOverdueInvoices(String userId, LocalDate now);
+    List<Invoice> findByUserIdAndStatus(String userId, String status);
+
+    List<Invoice> findByUserIdAndClientId(String userId, String clientId);
+
+    @Query("{ 'userId': ?0, 'status': { $in: ['SENT', 'VIEWED'] }, 'dueDate': { $lt: ?1 } }")
+    List<Invoice> findOverdueInvoices(String userId, LocalDate today);
+
+    @Query(value = "{ 'userId': ?0, 'invoiceNumber': { $regex: ?1 } }", count = true)
+    long countByUserIdAndInvoiceNumberRegex(String userId, String yearPattern);
 
     boolean existsByUserIdAndInvoiceNumber(String userId, String invoiceNumber);
 
-    java.util.Optional<Invoice> findByIdAndUserId(String id, String userId);
-
-    List<Invoice> saveAll(List<Invoice> invoices);
-
-    void delete(Invoice invoice);
-
-    Invoice save(Invoice invoice);
+    @Query("{ 'userId': ?0, 'status': 'PAID' }")
+    List<Invoice> findPaidInvoicesByUserId(String userId);
 }
