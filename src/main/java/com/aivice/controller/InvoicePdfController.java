@@ -39,7 +39,7 @@ public class InvoicePdfController {
         Client client = clientRepository.findById(invoice.getClientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found with id: " + id));
 
-        byte[] pdfBytes = pdfService.generateInvoicePdf(invoice , client);
+        byte[] pdfBytes = invoicePdfService.generateInvoicePdf(invoice , client);
 
         String filename = invoice.getInvoiceNumber().replace("/", "-") + ".pdf";
 

@@ -25,16 +25,16 @@ public class AiController {
     }
 
     @PostMapping("/reminder")
-    public ResponseEntity<AiDTO.DescriptionResponse> generateReminder(
+    public ResponseEntity<AiDTO.ReminderResponse> generateReminder(
             @Valid @RequestBody AiDTO.ReminderRequest request
     ){
         return ResponseEntity.ok(aiInvoiceService.generateReminder(request));
     }
 
     @PostMapping("/missing-info")
-    public ResponseEntity<AiDTO.DescriptionResponse> detectMissingInfo(
+    public ResponseEntity<AiDTO.MissingInfoResponse> detectMissingInfo(
             @Valid @RequestBody AiDTO.MissingInfoRequest request
     ){
-        return ResponseEntity.ok(aiInvoiceService.detectMissingInfo(request))
+        return ResponseEntity.ok(aiInvoiceService.detectMissingInfo(request));
     }
 }
