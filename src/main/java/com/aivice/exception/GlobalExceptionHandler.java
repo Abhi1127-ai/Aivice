@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
                 .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
 
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
+        body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Validation failed");
         body.put("details", fieldErrors);
@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<Map<String, Object>> buildError(HttpStatus status, String message) {
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
+        body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", status.value());
         body.put("error", message);
         return ResponseEntity.status(status).body(body);
