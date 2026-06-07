@@ -17,5 +17,4 @@ public class WebClientConfig {
     public ObjectMapper objectMapper() {
         return new ObjectMapper();
     }
-
 }

@@ -77,7 +77,7 @@ public class PaymentDTO {
     public static class StripePaymentResponse{
         private String clientSecret;
         private String paymentIntentId;
-        private long amountIncents;
+        private long amountInCents;
         private String currency;
     }
 
