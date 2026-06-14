@@ -25,7 +25,7 @@ public class GrokClient {
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
 
-    private static final String GROK_BASE_URL = "https://api.x.ai/v1";
+    private static final String GROK_BASE_URL = "https://api.groq.com/openai/v1";
 
     /**
      * Sends a prompt to Grok and returns the text response.
