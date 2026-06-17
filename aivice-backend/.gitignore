@@ -61,7 +61,3 @@ build/
 
 # Sensitive config
 src/main/resources/application.properties
-
-aivice-backend/.git-backup/
-aivice-backend/target/
-aivice-frontend/node_modules/
