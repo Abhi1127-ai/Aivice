@@ -9,7 +9,6 @@ const lineItems = [
 export default function AuthLayout({ title, subtitle, children, footer }) {
     return (
         <div className="min-h-screen flex flex-col lg:flex-row font-body-aivice">
-            {/* Left: form panel */}
             <div className="flex-1 bg-[#FBF7EF] flex flex-col">
                 <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
                     <div className="w-full max-w-sm">
@@ -35,7 +34,6 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
                 </div>
             </div>
 
-            {/* Right: signature receipt panel */}
             <div className="hidden lg:flex flex-1 bg-[#15203B] relative items-center justify-center overflow-hidden">
                 <div
                     className="absolute inset-0 opacity-[0.04]"
@@ -46,7 +44,6 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
                 />
 
                 <div className="receipt-card relative bg-[#FBF7EF] w-[320px] px-7 py-8 shadow-2xl">
-                    {/* perforation */}
                     <div className="absolute -top-2 left-0 right-0 flex justify-between px-3">
                         {Array.from({ length: 12 }).map((_, i) => (
                             <div key={i} className="w-3 h-3 rounded-full bg-[#15203B]" />
@@ -80,7 +77,6 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
                         <span className="font-mono-aivice text-xl font-bold text-[#15203B]">$4,300.00</span>
                     </div>
 
-                    {/* stamp */}
                     <div className="receipt-stamp absolute -right-6 -bottom-6" style={{ animationDelay: "1.4s" }}>
                         <div className="w-20 h-20 rounded-full border-2 border-[#2F9E5B] flex items-center justify-center -rotate-12 bg-[#FBF7EF]">
               <span className="font-mono-aivice text-[#2F9E5B] text-xs font-bold tracking-widest">

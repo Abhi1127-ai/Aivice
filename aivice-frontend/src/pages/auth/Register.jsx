@@ -7,17 +7,11 @@ const API_BASE = "http://localhost:8080";
 
 export default function Register() {
     const navigate = useNavigate();
-    const [form, setForm] = useState({
-        name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-    });
+    const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) =>
-        setForm({ ...form, [e.target.name]: e.target.value });
+    const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -34,11 +28,7 @@ export default function Register() {
             const res = await fetch(`${API_BASE}/api/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: form.name,
-                    email: form.email,
-                    password: form.password,
-                }),
+                body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
             });
 
             const data = await res.json();
@@ -48,10 +38,7 @@ export default function Register() {
             }
 
             localStorage.setItem("aivice_token", data.token);
-            localStorage.setItem(
-                "aivice_user",
-                JSON.stringify({ email: data.email, name: data.name })
-            );
+            localStorage.setItem("aivice_user", JSON.stringify({ email: data.email, name: data.name }));
 
             navigate("/dashboard");
         } catch (err) {
@@ -68,51 +55,19 @@ export default function Register() {
             footer={
                 <>
                     Already have an account?{" "}
-                    <Link
-                        to="/login"
-                        className="text-[#15203B] font-medium underline underline-offset-2"
-                    >
+                    <Link to="/login" className="text-[#15203B] font-medium underline underline-offset-2">
                         Sign in
                     </Link>
                 </>
             }
         >
             <form onSubmit={handleSubmit}>
-                <LedgerField
-                    label="Full name"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Abhishek Yadav"
-                />
-                <LedgerField
-                    label="Email"
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="you@studio.com"
-                />
-                <LedgerField
-                    label="Password"
-                    type="password"
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="At least 8 characters"
-                />
-                <LedgerField
-                    label="Confirm password"
-                    type="password"
-                    name="confirmPassword"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Repeat password"
-                />
+                <LedgerField label="Full name" name="name" value={form.name} onChange={handleChange} placeholder="Abhishek Yadav" />
+                <LedgerField label="Email" type="email" name="email" value={form.email} onChange={handleChange} placeholder="you@studio.com" />
+                <LedgerField label="Password" type="password" name="password" value={form.password} onChange={handleChange} placeholder="At least 8 characters" />
+                <LedgerField label="Confirm password" type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} placeholder="Repeat password" />
 
-                {error && (
-                    <p className="mb-4 text-sm text-[#FF6B4A] font-body-aivice">{error}</p>
-                )}
+                {error && <p className="mb-4 text-sm text-[#FF6B4A] font-body-aivice">{error}</p>}
 
                 <button
                     type="submit"
@@ -123,8 +78,7 @@ export default function Register() {
                 </button>
 
                 <p className="mt-4 text-xs text-[#8B8478] leading-relaxed">
-                    By creating an account, you agree to receive invoice and payment
-                    notifications by email.
+                    By creating an account, you agree to receive invoice and payment notifications by email.
                 </p>
             </form>
         </AuthLayout>

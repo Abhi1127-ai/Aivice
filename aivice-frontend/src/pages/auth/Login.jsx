@@ -11,8 +11,7 @@ export default function Login() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) =>
-        setForm({ ...form, [e.target.name]: e.target.value });
+    const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,10 +32,7 @@ export default function Login() {
             }
 
             localStorage.setItem("aivice_token", data.token);
-            localStorage.setItem(
-                "aivice_user",
-                JSON.stringify({ email: data.email, name: data.name })
-            );
+            localStorage.setItem("aivice_user", JSON.stringify({ email: data.email, name: data.name }));
 
             navigate("/dashboard");
         } catch (err) {
@@ -53,10 +49,7 @@ export default function Login() {
             footer={
                 <>
                     New to Aivice?{" "}
-                    <Link
-                        to="/register"
-                        className="text-[#15203B] font-medium underline underline-offset-2"
-                    >
+                    <Link to="/register" className="text-[#15203B] font-medium underline underline-offset-2">
                         Create an account
                     </Link>
                 </>
@@ -80,15 +73,7 @@ export default function Login() {
                     placeholder="••••••••"
                 />
 
-                {error && (
-                    <p className="mb-4 text-sm text-[#FF6B4A] font-body-aivice">{error}</p>
-                )}
-
-                <div className="flex items-center justify-end mb-6 text-sm">
-                    <a href="#" className="text-[#8B8478] hover:text-[#15203B] transition-colors">
-                        Forgot password?
-                    </a>
-                </div>
+                {error && <p className="mb-4 text-sm text-[#FF6B4A] font-body-aivice">{error}</p>}
 
                 <button
                     type="submit"
