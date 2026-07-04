@@ -1,53 +1,65 @@
 export default function LineItemRow({ item, index, onChange, onRemove, onAiImprove, aiLoading, currency }) {
-    const symbol = currency === "INR" ? "₹" : "$";
+    const sym = currency === "INR" ? "₹" : "$";
     const amount = (Number(item.quantity || 0) * Number(item.unitPrice || 0)).toFixed(2);
 
+    const cell = {
+        height: 38, padding: "0 10px", border: "1.5px solid #E5E7EB",
+        borderRadius: 8, fontSize: 13, color: "#111827", background: "#F9FAFB",
+        outline: "none", fontFamily: "'Inter', sans-serif", width: "100%",
+    };
+
     return (
-        <div className="grid grid-cols-[1fr_70px_110px_100px_28px] gap-3 items-start mb-3">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 120px 100px 32px", gap: 8, alignItems: "start", marginBottom: 10 }}>
+            {/* Description + AI button */}
             <div>
         <textarea
             value={item.description}
-            onChange={(e) => onChange(index, "description", e.target.value)}
+            onChange={e => onChange(index, "description", e.target.value)}
             placeholder="Describe the work…"
-            rows={1}
-            className="w-full bg-white border border-[#D8D1C2] rounded-sm px-3 py-2 text-sm font-body-aivice resize-none focus:outline-none focus:border-[#15203B] transition-colors"
+            rows={2}
+            style={{ ...cell, height: "auto", padding: "8px 10px", resize: "none" }}
         />
                 <button
                     type="button"
                     onClick={() => onAiImprove(index)}
                     disabled={!item.description || aiLoading === index}
-                    className="mt-1 font-mono-aivice text-[10px] tracking-wide uppercase text-[#7654B3] hover:text-[#15203B] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        fontSize: 11, fontWeight: 500, color: aiLoading === index ? "#9CA3AF" : "#7C3AED",
+                        padding: "2px 0", fontFamily: "'Inter', sans-serif",
+                        opacity: !item.description ? 0.4 : 1,
+                    }}
                 >
-                    {aiLoading === index ? "Polishing…" : "Improve with AI"}
+                    {aiLoading === index ? "Improving…" : "✦ AI Improve"}
                 </button>
             </div>
 
+            {/* Qty */}
             <input
-                type="number"
-                min="1"
+                type="number" min="1"
                 value={item.quantity}
-                onChange={(e) => onChange(index, "quantity", e.target.value)}
-                className="bg-white border border-[#D8D1C2] rounded-sm px-2 py-2 text-sm font-mono-aivice text-center focus:outline-none focus:border-[#15203B] transition-colors"
+                onChange={e => onChange(index, "quantity", e.target.value)}
+                style={{ ...cell, textAlign: "center" }}
             />
 
+            {/* Unit price */}
             <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="number" min="0" step="0.01"
                 value={item.unitPrice}
-                onChange={(e) => onChange(index, "unitPrice", e.target.value)}
-                className="bg-white border border-[#D8D1C2] rounded-sm px-2 py-2 text-sm font-mono-aivice text-right focus:outline-none focus:border-[#15203B] transition-colors"
+                onChange={e => onChange(index, "unitPrice", e.target.value)}
+                style={{ ...cell, textAlign: "right" }}
             />
 
-            <div className="px-2 py-2 font-mono-aivice text-sm text-right text-[#15203B]">
-                {symbol}{amount}
+            {/* Amount */}
+            <div style={{ height: 38, display: "flex", alignItems: "center", justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: "#111827" }}>
+                {sym}{amount}
             </div>
 
+            {/* Remove */}
             <button
                 type="button"
                 onClick={() => onRemove(index)}
-                className="text-[#8B8478] hover:text-[#D14B2E] transition-colors text-lg leading-none mt-1.5"
-                aria-label="Remove line item"
+                style={{ height: 38, background: "#FEF2F2", border: "none", borderRadius: 8, cursor: "pointer", color: "#EF4444", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
             >
                 ×
             </button>

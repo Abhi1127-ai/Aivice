@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { PageHeader } from "../../components/layout/AppShell";
-import { Field, PrimaryButton, SecondaryButton } from "../../components/shared/Form";
+import { PageHeader, Card, Btn } from "../../components/layout/AppShell";
+import { Field } from "../../components/shared/UI.jsx";
 import LineItemRow from "./LineItemRow";
 import { api } from "../../lib/api";
 
@@ -14,237 +14,143 @@ export default function InvoiceForm() {
 
     const [clients, setClients] = useState([]);
     const [form, setForm] = useState({
-        clientId: "",
-        issueDate: new Date().toISOString().slice(0, 10),
-        dueDate: "",
-        currency: "INR",
-        taxPercent: 18,
-        discountPercent: 0,
-        notes: "Thank you for your business!",
-        terms: "Payment due within the agreed terms.",
+        clientId: "", issueDate: new Date().toISOString().slice(0, 10),
+        dueDate: "", currency: "INR", taxPercent: 18, discountPercent: 0,
+        notes: "Thank you for your business!", terms: "Payment due within the agreed terms.",
     });
     const [items, setItems] = useState([emptyItem()]);
-    const [aiLoadingIndex, setAiLoadingIndex] = useState(null);
+    const [aiLoading, setAiLoading] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [loadingClients, setLoadingClients] = useState(true);
 
     useEffect(() => {
-        api
-            .get("/api/clients")
-            .then((data) => setClients(data || []))
-            .catch((e) => setError(e.message))
-            .finally(() => setLoadingClients(false));
+        api.get("/api/clients").then(d => setClients(d || []));
     }, []);
 
     useEffect(() => {
         if (!isEdit) return;
-        api.get(`/api/invoices/${id}`).then((inv) => {
-            setForm({
-                clientId: inv.clientId,
-                issueDate: inv.issueDate,
-                dueDate: inv.dueDate,
-                currency: inv.currency,
-                taxPercent: inv.taxPercent,
-                discountPercent: inv.discountPercent,
-                notes: inv.notes || "",
-                terms: inv.terms || "",
-            });
-            setItems(
-                inv.lineItems.map((li) => ({
-                    description: li.description,
-                    quantity: li.quantity,
-                    unitPrice: li.unitPrice,
-                }))
-            );
+        api.get(`/api/invoices/${id}`).then(inv => {
+            setForm({ clientId:inv.clientId, issueDate:inv.issueDate, dueDate:inv.dueDate, currency:inv.currency, taxPercent:inv.taxPercent, discountPercent:inv.discountPercent, notes:inv.notes||"", terms:inv.terms||"" });
+            setItems(inv.lineItems.map(li => ({ description:li.description, quantity:li.quantity, unitPrice:li.unitPrice })));
         });
     }, [id, isEdit]);
 
-    const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-    const handleItemChange = (index, field, value) => {
-        const next = [...items];
-        next[index][field] = value;
-        setItems(next);
-    };
-
+    const ch = e => setForm({ ...form, [e.target.name]: e.target.value });
+    const itemCh = (i, field, val) => { const n=[...items]; n[i][field]=val; setItems(n); };
     const addItem = () => setItems([...items, emptyItem()]);
-    const removeItem = (index) => setItems(items.length > 1 ? items.filter((_, i) => i !== index) : items);
+    const removeItem = i => items.length > 1 ? setItems(items.filter((_,idx)=>idx!==i)) : null;
 
-    const handleAiImprove = async (index) => {
-        setAiLoadingIndex(index);
+    const aiImprove = async i => {
+        setAiLoading(i);
         try {
-            const res = await api.post("/api/ai/generate-description", {
-                rawInput: items[index].description,
-                tone: "professional",
-                industry: "software",
-            });
-            handleItemChange(index, "description", res.improved);
-        } catch (e) {
-            alert(e.message || "AI couldn't improve this just now — try again in a moment.");
-        } finally {
-            setAiLoadingIndex(null);
-        }
+            const res = await api.post("/api/ai/generate-description", { rawInput: items[i].description, tone:"professional", industry:"software" });
+            itemCh(i, "description", res.improved);
+        } catch(e) { alert(e.message); }
+        finally { setAiLoading(null); }
     };
 
-    const subtotal = items.reduce((sum, it) => sum + Number(it.quantity || 0) * Number(it.unitPrice || 0), 0);
-    const discountAmount = (subtotal * Number(form.discountPercent || 0)) / 100;
-    const taxAmount = ((subtotal - discountAmount) * Number(form.taxPercent || 0)) / 100;
-    const total = subtotal - discountAmount + taxAmount;
-    const symbol = form.currency === "INR" ? "₹" : "$";
+    const subtotal = items.reduce((s,it) => s + Number(it.quantity||0)*Number(it.unitPrice||0), 0);
+    const disc     = subtotal * Number(form.discountPercent||0) / 100;
+    const tax      = (subtotal - disc) * Number(form.taxPercent||0) / 100;
+    const total    = subtotal - disc + tax;
+    const sym      = form.currency === "INR" ? "₹" : "$";
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-
-        if (!form.clientId) {
-            setError("Pick a client before saving.");
-            return;
-        }
-        if (items.some((it) => !it.description || !it.unitPrice)) {
-            setError("Every line item needs a description and a price.");
-            return;
-        }
-
+    const submit = async e => {
+        e.preventDefault(); setError("");
+        if (!form.clientId) { setError("Please select a client."); return; }
+        if (items.some(it => !it.description || !it.unitPrice)) { setError("All line items need a description and price."); return; }
         setSaving(true);
         try {
-            const payload = {
-                ...form,
-                taxPercent: Number(form.taxPercent),
-                discountPercent: Number(form.discountPercent),
-                lineItems: items.map((it) => ({
-                    description: it.description,
-                    quantity: Number(it.quantity),
-                    unitPrice: Number(it.unitPrice),
-                })),
-            };
-
-            if (isEdit) {
-                await api.put(`/api/invoices/${id}`, payload);
-                navigate(`/invoices/${id}`);
-            } else {
-                const created = await api.post("/api/invoices", payload);
-                navigate(`/invoices/${created.id}`);
-            }
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setSaving(false);
-        }
+            const payload = { ...form, taxPercent:Number(form.taxPercent), discountPercent:Number(form.discountPercent),
+                lineItems: items.map(it => ({ description:it.description, quantity:Number(it.quantity), unitPrice:Number(it.unitPrice) })) };
+            const result = isEdit ? await api.put(`/api/invoices/${id}`, payload) : await api.post("/api/invoices", payload);
+            navigate(`/invoices/${isEdit ? id : result.id}`);
+        } catch(err) { setError(err.message); }
+        finally { setSaving(false); }
     };
 
     return (
         <div>
-            <PageHeader eyebrow="Aivice · Invoice" title={isEdit ? "Edit invoice" : "New invoice"} />
-
-            <form onSubmit={handleSubmit} className="px-10 py-8 max-w-3xl">
+            <PageHeader title={isEdit ? "Edit invoice" : "New invoice"} subtitle="Fill in the details below" />
+            <div style={{ padding:"24px 32px", maxWidth:860 }}>
                 {error && (
-                    <div className="mb-6 px-4 py-3 bg-[#FCEAE6] text-[#D14B2E] text-sm rounded-sm font-body-aivice">
+                    <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:10, padding:"12px 16px", marginBottom:20, fontSize:13, color:"#DC2626" }}>
                         {error}
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 mb-2">
-                    <Field
-                        label="Client"
-                        as="select"
-                        name="clientId"
-                        value={form.clientId}
-                        onChange={handleFormChange}
-                        required
-                        options={[
-                            { value: "", label: loadingClients ? "Loading…" : "Select a client" },
-                            ...clients.map((c) => ({ value: c.id, label: c.companyName })),
-                        ]}
-                    />
-                    <Field
-                        label="Currency"
-                        as="select"
-                        name="currency"
-                        value={form.currency}
-                        onChange={handleFormChange}
-                        options={[
-                            { value: "INR", label: "INR (₹)" },
-                            { value: "USD", label: "USD ($)" },
-                        ]}
-                    />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                    <Field label="Issue date" type="date" name="issueDate" value={form.issueDate} onChange={handleFormChange} required />
-                    <Field label="Due date" type="date" name="dueDate" value={form.dueDate} onChange={handleFormChange} required />
-                </div>
-
-                <div className="mb-2">
-                    <div className="grid grid-cols-[1fr_70px_110px_100px_28px] gap-3 mb-2 font-mono-aivice text-[10px] tracking-wide uppercase text-[#8B8478]">
-                        <span>Description</span>
-                        <span className="text-center">Qty</span>
-                        <span className="text-right">Unit price</span>
-                        <span className="text-right">Amount</span>
-                        <span></span>
-                    </div>
-                    {items.map((item, i) => (
-                        <LineItemRow
-                            key={i}
-                            item={item}
-                            index={i}
-                            onChange={handleItemChange}
-                            onRemove={removeItem}
-                            onAiImprove={handleAiImprove}
-                            aiLoading={aiLoadingIndex}
-                            currency={form.currency}
-                        />
-                    ))}
-                </div>
-
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="font-body-aivice text-sm font-medium text-[#15203B] underline underline-offset-2 mb-8"
-                >
-                    + Add line item
-                </button>
-
-                <div className="grid grid-cols-2 gap-4 mb-2 max-w-sm">
-                    <Field label="Discount %" type="number" name="discountPercent" value={form.discountPercent} onChange={handleFormChange} />
-                    <Field label="Tax / GST %" type="number" name="taxPercent" value={form.taxPercent} onChange={handleFormChange} />
-                </div>
-
-                <div className="bg-white border border-[#E4DFD3] rounded-sm p-5 max-w-sm mb-8 font-body-aivice text-sm">
-                    <div className="flex justify-between mb-2 text-[#8B8478]">
-                        <span>Subtotal</span>
-                        <span className="font-mono-aivice text-[#15203B]">{symbol}{subtotal.toFixed(2)}</span>
-                    </div>
-                    {Number(form.discountPercent) > 0 && (
-                        <div className="flex justify-between mb-2 text-[#8B8478]">
-                            <span>Discount ({form.discountPercent}%)</span>
-                            <span className="font-mono-aivice text-[#15203B]">− {symbol}{discountAmount.toFixed(2)}</span>
+                <form onSubmit={submit}>
+                    {/* Client & currency */}
+                    <Card style={{ padding:"20px 24px", marginBottom:16 }}>
+                        <h3 style={{ fontSize:14, fontWeight:600, color:"#111827", marginBottom:16 }}>Invoice details</h3>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                            <Field label="Client *" as="select" name="clientId" value={form.clientId} onChange={ch} required
+                                   options={[{value:"",label:"Select a client…"}, ...clients.map(c=>({value:c.id,label:c.companyName}))]} />
+                            <Field label="Currency" as="select" name="currency" value={form.currency} onChange={ch}
+                                   options={[{value:"INR",label:"INR (₹)"},{value:"USD",label:"USD ($)"}]} />
+                            <Field label="Issue date *" type="date" name="issueDate" value={form.issueDate} onChange={ch} required />
+                            <Field label="Due date *" type="date" name="dueDate" value={form.dueDate} onChange={ch} required />
                         </div>
-                    )}
-                    {Number(form.taxPercent) > 0 && (
-                        <div className="flex justify-between mb-2 text-[#8B8478]">
-                            <span>Tax ({form.taxPercent}%)</span>
-                            <span className="font-mono-aivice text-[#15203B]">{symbol}{taxAmount.toFixed(2)}</span>
+                    </Card>
+
+                    {/* Line items */}
+                    <Card style={{ padding:"20px 24px", marginBottom:16 }}>
+                        <h3 style={{ fontSize:14, fontWeight:600, color:"#111827", marginBottom:16 }}>Line items</h3>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 70px 120px 100px 32px", gap:8, marginBottom:8 }}>
+                            {["Description","Qty","Unit price","Amount",""].map(h => (
+                                <div key={h} style={{ fontSize:11, fontWeight:600, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.05em" }}>{h}</div>
+                            ))}
                         </div>
-                    )}
-                    <div className="flex justify-between pt-3 mt-2 border-t border-dashed border-[#D8D1C2] font-display text-lg text-[#15203B]">
-                        <span>Total due</span>
-                        <span className="font-mono-aivice">{symbol}{total.toFixed(2)}</span>
+                        {items.map((item, i) => (
+                            <LineItemRow key={i} item={item} index={i} onChange={itemCh} onRemove={removeItem}
+                                         onAiImprove={aiImprove} aiLoading={aiLoading} currency={form.currency} />
+                        ))}
+                        <button type="button" onClick={addItem} style={{
+                            background:"none", border:"1.5px dashed #D1D5DB", borderRadius:8, cursor:"pointer",
+                            padding:"8px 16px", fontSize:13, color:"#6B7280", width:"100%", marginTop:4,
+                            fontFamily:"'Inter', sans-serif",
+                        }}>
+                            + Add line item
+                        </button>
+                    </Card>
+
+                    {/* Tax, discount, totals */}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 320px", gap:16, marginBottom:16 }}>
+                        <Card style={{ padding:"20px 24px" }}>
+                            <h3 style={{ fontSize:14, fontWeight:600, color:"#111827", marginBottom:16 }}>Notes & terms</h3>
+                            <Field label="Notes (shown on invoice)" as="textarea" name="notes" value={form.notes} onChange={ch} rows={3} />
+                            <Field label="Terms & conditions" as="textarea" name="terms" value={form.terms} onChange={ch} rows={2} />
+                        </Card>
+
+                        <Card style={{ padding:"20px 24px" }}>
+                            <h3 style={{ fontSize:14, fontWeight:600, color:"#111827", marginBottom:16 }}>Summary</h3>
+                            <Field label="Discount %" type="number" name="discountPercent" value={form.discountPercent} onChange={ch} />
+                            <Field label="Tax / GST %" type="number" name="taxPercent" value={form.taxPercent} onChange={ch} />
+
+                            <div style={{ borderTop:"1px solid #F3F4F6", paddingTop:14, marginTop:4 }}>
+                                {[
+                                    { label:"Subtotal", val: sym+subtotal.toFixed(2) },
+                                    ...(Number(form.discountPercent)>0 ? [{ label:`Discount (${form.discountPercent}%)`, val:"− "+sym+disc.toFixed(2) }] : []),
+                                    ...(Number(form.taxPercent)>0 ? [{ label:`Tax (${form.taxPercent}%)`, val: sym+tax.toFixed(2) }] : []),
+                                ].map(row => (
+                                    <div key={row.label} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#6B7280", marginBottom:8 }}>
+                                        <span>{row.label}</span><span style={{ fontWeight:500, color:"#374151" }}>{row.val}</span>
+                                    </div>
+                                ))}
+                                <div style={{ display:"flex", justifyContent:"space-between", fontSize:15, fontWeight:700, color:"#111827", paddingTop:10, borderTop:"1px solid #E5E7EB", marginTop:4 }}>
+                                    <span>Total due</span>
+                                    <span style={{ color:"#10B981" }}>{sym}{total.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </Card>
                     </div>
-                </div>
 
-                <Field label="Notes (shown on invoice)" as="textarea" name="notes" value={form.notes} onChange={handleFormChange} />
-                <Field label="Terms & conditions" as="textarea" name="terms" value={form.terms} onChange={handleFormChange} />
-
-                <div className="flex gap-3 mt-6">
-                    <PrimaryButton type="submit" disabled={saving}>
-                        {saving ? "Saving…" : isEdit ? "Save changes" : "Create invoice"}
-                    </PrimaryButton>
-                    <SecondaryButton onClick={() => navigate("/invoices")} disabled={saving}>
-                        Cancel
-                    </SecondaryButton>
-                </div>
-            </form>
+                    <div style={{ display:"flex", gap:12 }}>
+                        <Btn type="submit" disabled={saving}>{saving ? "Saving…" : isEdit ? "Save changes" : "Create invoice"}</Btn>
+                        <Btn variant="secondary" onClick={() => navigate("/invoices")}>Cancel</Btn>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

@@ -1,166 +1,120 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "../../components/layout/AppShell";
-import StatusPill from "../../components/shared/StatusPill";
-import { api, getCurrentUser } from "../../lib/api";
+import { PageHeader, Card, Btn } from "../../components/layout/AppShell";
+import { StatusPill } from "../../components/shared/UI.jsx";
+import { api, getUser } from "../../lib/api";
 
-function formatMoney(amount, currency = "INR") {
-    const symbol = currency === "INR" ? "₹" : "$";
-    return `${symbol}${Number(amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+const fmt = (n, cur = "INR") => {
+    const sym = cur === "INR" ? "₹" : "$";
+    return sym + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+};
+
+function StatCard({ label, value, sub, color = "#10B981", loading }) {
+    return (
+        <Card style={{ padding:"20px 22px" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                <span style={{ fontSize:13, color:"#6B7280", fontWeight:500 }}>{label}</span>
+                <div style={{ width:36, height:36, borderRadius:10, background: color + "18", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <div style={{ width:14, height:14, borderRadius:3, background:color, opacity:0.8 }} />
+                </div>
+            </div>
+            {loading
+                ? <div style={{ height:32, width:100, background:"#F3F4F6", borderRadius:6 }} />
+                : <div style={{ fontSize:26, fontWeight:700, color:"#111827", marginBottom:4 }}>{value}</div>
+            }
+            <div style={{ fontSize:12, color:"#9CA3AF" }}>{sub}</div>
+        </Card>
+    );
 }
 
 export default function Dashboard() {
     const [invoices, setInvoices] = useState([]);
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const user = getUser() || {};
+    const first = (user.name || "").split(" ")[0];
 
     useEffect(() => {
         Promise.all([api.get("/api/invoices"), api.get("/api/clients")])
-            .then(([inv, cl]) => {
-                setInvoices(inv || []);
-                setClients(cl || []);
-            })
-            .catch((e) => setError(e.message))
+            .then(([inv, cl]) => { setInvoices(inv || []); setClients(cl || []); })
             .finally(() => setLoading(false));
     }, []);
 
-    const paidInvoices = invoices.filter((i) => i.status === "PAID");
-    const outstandingInvoices = invoices.filter((i) => ["SENT", "VIEWED", "OVERDUE"].includes(i.status));
-    const overdueInvoices = invoices.filter((i) => i.status === "OVERDUE");
-
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
-    const outstanding = outstandingInvoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
-
-    const recentInvoices = [...invoices]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 6);
-
-    const user = getCurrentUser() || {};
-    const firstName = (user.name || "").split(" ")[0];
+    const paid      = invoices.filter(i => i.status === "PAID");
+    const pending   = invoices.filter(i => ["SENT","VIEWED"].includes(i.status));
+    const overdue   = invoices.filter(i => i.status === "OVERDUE");
+    const revenue   = paid.reduce((s, i) => s + Number(i.totalAmount || 0), 0);
+    const outstanding = pending.concat(overdue).reduce((s, i) => s + Number(i.totalAmount || 0), 0);
+    const recent    = [...invoices].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0,7);
 
     return (
         <div>
             <PageHeader
-                eyebrow="Aivice · Overview"
-                title={firstName ? `Good to see you, ${firstName}` : "Overview"}
+                title={first ? `Good day, ${first}` : "Overview"}
+                subtitle="Here's a summary of your business"
+                action={<Link to="/invoices/new"><Btn>+ New invoice</Btn></Link>}
             />
 
-            <div className="px-10 py-8">
-                {error && (
-                    <div className="mb-6 px-4 py-3 bg-[#FCEAE6] text-[#D14B2E] text-sm rounded-sm font-body-aivice">
-                        {error}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
-                    <StatCard
-                        label="Total revenue"
-                        value={formatMoney(totalRevenue)}
-                        caption={`from ${paidInvoices.length} paid invoice${paidInvoices.length === 1 ? "" : "s"}`}
-                        loading={loading}
-                    />
-                    <StatCard
-                        label="Outstanding"
-                        value={formatMoney(outstanding)}
-                        caption={`across ${outstandingInvoices.length} invoice${outstandingInvoices.length === 1 ? "" : "s"}`}
-                        loading={loading}
-                        accent="#C98A2E"
-                    />
-                    <StatCard label="Clients" value={clients.length} caption="on file" loading={loading} />
-                </div>
-
-                {overdueInvoices.length > 0 && (
-                    <div className="mb-10 px-5 py-4 bg-[#FCEAE6] border border-[#F3C5B8] rounded-sm flex items-center justify-between fade-up">
+            <div style={{ padding:"24px 32px" }}>
+                {overdue.length > 0 && (
+                    <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:10, padding:"12px 18px", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                         <div>
-                            <p className="font-body-aivice text-sm font-medium text-[#15203B]">
-                                {overdueInvoices.length} invoice{overdueInvoices.length > 1 ? "s" : ""} overdue
-                            </p>
-                            <p className="font-body-aivice text-sm text-[#8B8478] mt-0.5">
-                                Worth {formatMoney(overdueInvoices.reduce((s, i) => s + Number(i.totalAmount || 0), 0))} — a nudge might help.
-                            </p>
+                            <span style={{ fontWeight:600, fontSize:13, color:"#991B1B" }}>{overdue.length} overdue invoice{overdue.length > 1 ? "s" : ""}</span>
+                            <span style={{ fontSize:13, color:"#DC2626", marginLeft:8 }}>totalling {fmt(overdue.reduce((s,i) => s + Number(i.totalAmount||0), 0))}</span>
                         </div>
-                        <Link
-                            to="/invoices?status=OVERDUE"
-                            className="font-body-aivice text-sm font-medium text-[#D14B2E] underline underline-offset-2 whitespace-nowrap"
-                        >
-                            Review now
-                        </Link>
+                        <Link to="/invoices?status=OVERDUE" style={{ fontSize:13, fontWeight:500, color:"#DC2626", textDecoration:"none" }}>View →</Link>
                     </div>
                 )}
 
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display text-xl text-[#15203B]">Recent invoices</h2>
-                    <Link
-                        to="/invoices"
-                        className="font-mono-aivice text-xs tracking-wide uppercase text-[#8B8478] hover:text-[#15203B] transition-colors"
-                    >
-                        View all →
-                    </Link>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:16, marginBottom:24 }}>
+                    <StatCard label="Total revenue" value={fmt(revenue)} sub={`${paid.length} paid invoices`} color="#10B981" loading={loading} />
+                    <StatCard label="Outstanding" value={fmt(outstanding)} sub={`${pending.length} awaiting payment`} color="#F59E0B" loading={loading} />
+                    <StatCard label="Overdue" value={overdue.length} sub="need attention" color="#EF4444" loading={loading} />
+                    <StatCard label="Total clients" value={clients.length} sub="on file" color="#6366F1" loading={loading} />
                 </div>
 
-                <div className="bg-white border border-[#E4DFD3] rounded-sm overflow-hidden">
+                <Card>
+                    <div style={{ padding:"16px 20px", borderBottom:"1px solid #F3F4F6", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                        <h2 style={{ fontSize:15, fontWeight:600, color:"#111827" }}>Recent invoices</h2>
+                        <Link to="/invoices" style={{ fontSize:13, color:"#10B981", textDecoration:"none", fontWeight:500 }}>View all</Link>
+                    </div>
                     {loading ? (
-                        <div className="px-5 py-10 text-center text-[#8B8478] font-body-aivice text-sm">
-                            Loading invoices…
-                        </div>
-                    ) : recentInvoices.length === 0 ? (
-                        <div className="px-5 py-10 text-center">
-                            <p className="font-body-aivice text-sm text-[#8B8478] mb-3">
-                                No invoices yet — your first one is one click away.
-                            </p>
-                            <Link to="/invoices/new" className="font-body-aivice text-sm font-medium text-[#15203B] underline underline-offset-2">
-                                Create an invoice
-                            </Link>
+                        <div style={{ padding:"32px 20px", textAlign:"center", color:"#9CA3AF", fontSize:13 }}>Loading…</div>
+                    ) : recent.length === 0 ? (
+                        <div style={{ padding:"40px 20px", textAlign:"center" }}>
+                            <p style={{ color:"#6B7280", fontSize:13, marginBottom:12 }}>No invoices yet.</p>
+                            <Link to="/invoices/new"><Btn variant="secondary">Create your first invoice</Btn></Link>
                         </div>
                     ) : (
-                        <table className="w-full text-left">
+                        <table style={{ width:"100%", borderCollapse:"collapse" }}>
                             <thead>
-                            <tr className="border-b border-[#E4DFD3] font-mono-aivice text-[10px] tracking-wide uppercase text-[#8B8478]">
-                                <th className="px-5 py-3">Invoice</th>
-                                <th className="px-5 py-3">Client</th>
-                                <th className="px-5 py-3">Status</th>
-                                <th className="px-5 py-3 text-right">Amount</th>
+                            <tr style={{ borderBottom:"1px solid #F3F4F6" }}>
+                                {["Invoice #", "Client", "Issue date", "Due date", "Status", "Amount"].map(h => (
+                                    <th key={h} style={{ padding:"10px 20px", textAlign:"left", fontSize:11, fontWeight:600, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.05em" }}>{h}</th>
+                                ))}
                             </tr>
                             </thead>
                             <tbody>
-                            {recentInvoices.map((inv) => (
-                                <tr key={inv.id} className="border-b border-[#F0EDE3] last:border-0 hover:bg-[#FBF7EF] transition-colors">
-                                    <td className="px-5 py-3.5">
-                                        <Link to={`/invoices/${inv.id}`} className="font-mono-aivice text-sm text-[#15203B] hover:underline">
-                                            {inv.invoiceNumber}
-                                        </Link>
+                            {recent.map(inv => (
+                                <tr key={inv.id} style={{ borderBottom:"1px solid #F9FAFB" }}
+                                    onMouseEnter={e => e.currentTarget.style.background = "#FAFAFA"}
+                                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                                >
+                                    <td style={{ padding:"12px 20px" }}>
+                                        <Link to={`/invoices/${inv.id}`} style={{ fontSize:13, fontWeight:500, color:"#10B981", textDecoration:"none" }}>{inv.invoiceNumber}</Link>
                                     </td>
-                                    <td className="px-5 py-3.5 font-body-aivice text-sm text-[#15203B]">{inv.clientName}</td>
-                                    <td className="px-5 py-3.5">
-                                        <StatusPill status={inv.status} />
-                                    </td>
-                                    <td className="px-5 py-3.5 text-right font-mono-aivice text-sm text-[#15203B]">
-                                        {formatMoney(inv.totalAmount, inv.currency)}
-                                    </td>
+                                    <td style={{ padding:"12px 20px", fontSize:13, color:"#374151" }}>{inv.clientName}</td>
+                                    <td style={{ padding:"12px 20px", fontSize:13, color:"#6B7280" }}>{inv.issueDate}</td>
+                                    <td style={{ padding:"12px 20px", fontSize:13, color:"#6B7280" }}>{inv.dueDate}</td>
+                                    <td style={{ padding:"12px 20px" }}><StatusPill status={inv.status} /></td>
+                                    <td style={{ padding:"12px 20px", fontSize:13, fontWeight:600, color:"#111827" }}>{fmt(inv.totalAmount, inv.currency)}</td>
                                 </tr>
                             ))}
                             </tbody>
                         </table>
                     )}
-                </div>
+                </Card>
             </div>
-        </div>
-    );
-}
-
-function StatCard({ label, value, caption, loading, accent = "#15203B" }) {
-    return (
-        <div className="bg-white border border-[#E4DFD3] rounded-sm p-5 fade-up">
-            <p className="font-mono-aivice text-[10px] tracking-[0.2em] uppercase text-[#8B8478] mb-3">{label}</p>
-            {loading ? (
-                <div className="h-8 w-24 bg-[#F3EEE2] rounded-sm animate-pulse" />
-            ) : (
-                <p className="font-display text-3xl" style={{ color: accent }}>
-                    {value}
-                </p>
-            )}
-            <p className="font-body-aivice text-xs text-[#8B8478] mt-2">{caption}</p>
         </div>
     );
 }

@@ -1,85 +1,65 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import AuthLayout from "../../components/auth/AuthLayout";
-import LedgerField from "../../components/auth/LedgerField";
-
-const API_BASE = "http://localhost:8080";
+import InputField from "../../components/auth/InputField";
+import { setUser } from "../../lib/api";
 
 export default function Register() {
     const navigate = useNavigate();
-    const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+    const [form, setForm] = useState({ name:"", email:"", password:"", confirmPassword:"" });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+    const onChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-
-        if (form.password !== form.confirmPassword) {
-            setError("Passwords don't match");
-            return;
-        }
-
+    const onSubmit = async e => {
+        e.preventDefault(); setError("");
+        if (form.password !== form.confirmPassword) { setError("Passwords don't match"); return; }
         setLoading(true);
-
         try {
-            const res = await fetch(`${API_BASE}/api/auth/register`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+            const res = await fetch("http://localhost:8080/api/auth/register", {
+                method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
             });
-
             const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Could not create account");
-            }
-
-            localStorage.setItem("aivice_token", data.token);
-            localStorage.setItem("aivice_user", JSON.stringify({ email: data.email, name: data.name }));
-
+            if (!res.ok) throw new Error(data.error || "Registration failed");
+            setUser({ name: data.name, email: data.email }, data.token);
             navigate("/dashboard");
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { setError(err.message); }
+        finally { setLoading(false); }
     };
 
     return (
         <AuthLayout
             title="Create your account"
-            subtitle="Set up Aivice and send your first AI-written invoice in minutes."
-            footer={
-                <>
-                    Already have an account?{" "}
-                    <Link to="/login" className="text-[#15203B] font-medium underline underline-offset-2">
-                        Sign in
-                    </Link>
-                </>
-            }
+            subtitle="Get started with Aivice — it's free"
+            footer={<>Already have an account? <Link to="/login" style={{ color:"#10B981", fontWeight:500 }}>Sign in</Link></>}
         >
-            <form onSubmit={handleSubmit}>
-                <LedgerField label="Full name" name="name" value={form.name} onChange={handleChange} placeholder="Abhishek Yadav" />
-                <LedgerField label="Email" type="email" name="email" value={form.email} onChange={handleChange} placeholder="you@studio.com" />
-                <LedgerField label="Password" type="password" name="password" value={form.password} onChange={handleChange} placeholder="At least 8 characters" />
-                <LedgerField label="Confirm password" type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} placeholder="Repeat password" />
+            <form onSubmit={onSubmit}>
+                <InputField label="Full name" name="name" value={form.name} onChange={onChange} placeholder="Abhishek Yadav" required icon="👤" />
+                <InputField label="Email address" type="email" name="email" value={form.email} onChange={onChange} placeholder="you@example.com" required icon="✉" />
+                <InputField label="Password" type="password" name="password" value={form.password} onChange={onChange} placeholder="At least 8 characters" required icon="🔒" />
+                <InputField label="Confirm password" type="password" name="confirmPassword" value={form.confirmPassword} onChange={onChange} placeholder="Repeat password" required icon="🔒" />
 
-                {error && <p className="mb-4 text-sm text-[#FF6B4A] font-body-aivice">{error}</p>}
+                {error && (
+                    <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#DC2626" }}>
+                        {error}
+                    </div>
+                )}
 
                 <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#15203B] text-[#FBF7EF] font-body-aivice font-medium py-3 rounded-sm hover:bg-[#FF6B4A] transition-colors disabled:opacity-60"
+                    type="submit" disabled={loading}
+                    style={{
+                        width:"100%", height:46, borderRadius:10, border:"none", cursor:"pointer",
+                        background: loading ? "#6EE7B7" : "#10B981", color:"#fff",
+                        fontSize:15, fontWeight:600, fontFamily:"'Inter', sans-serif",
+                        transition:"background 0.15s",
+                    }}
+                    onMouseEnter={e => { if(!loading) e.target.style.background = "#059669"; }}
+                    onMouseLeave={e => { if(!loading) e.target.style.background = "#10B981"; }}
                 >
                     {loading ? "Creating account…" : "Create account"}
                 </button>
-
-                <p className="mt-4 text-xs text-[#8B8478] leading-relaxed">
-                    By creating an account, you agree to receive invoice and payment notifications by email.
-                </p>
             </form>
         </AuthLayout>
     );
